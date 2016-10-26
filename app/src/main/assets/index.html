@@ -1,0 +1,224 @@
+<!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.0//EN"
+        "http://www.wapforum.org/DTD/xhtml-mobile10.dtd ">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <script language="javascript" type="text/javascript">
+
+    window.onload = function() {
+        initDatabase();
+        initLocalStorage();
+        get_location();
+    }
+
+    //初始化本地储存
+    function initLocalStorage(){
+        if (window.localStorage) {
+            textarea.addEventListener("keyup", function() {
+                window.localStorage["value"] = this.value;
+                window.localStorage["time"] = new Date().getTime();
+            }, false);
+        } else {
+            alert("LocalStorage are not supported in this browser.");
+        }
+    }
+
+    //定位
+    function get_location() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(show_map,handle_error,{enableHighAccuracy:false,maximumAge:1000,timeout:15000});
+        } else {
+            alert("Your browser does not support HTML5 geoLocation");
+        }
+    }
+
+    //展示地图
+    function show_map(position) {
+        var latitude = position.coords.latitude;
+        var longitude = position.coords.longitude;
+        var city = position.coords.city;
+        //telnet localhost 5554
+        //geo fix -82.411629 28.054553
+        //geo fix -121.45356 46.51119 4392
+        //geo nmea $GPGGA,001431.092,0118.2653,N,10351.1359,E,0,00,,-19.6,M,4.1,M,,0000*5B
+        document.getElementById("Latitude").innerHTML="latitude:"+latitude;
+        document.getElementById("Longitude").innerHTML="longitude:"+longitude;
+        document.getElementById("City").innerHTML="city:"+city;
+    }
+
+    //初始化数据库
+    function initDatabase() {
+        try {
+            if (!window.openDatabase) {
+                alert('Databases are not supported by your browser');
+            } else {
+                var shortName = 'YARINDB';
+                var version = '1.0';
+                var displayName = 'yarin db';
+                var maxSize = 100000; // in bytes
+                YARINDB = openDatabase(shortName, version, displayName, maxSize);
+                createTables();
+                selectAll();
+            }
+        } catch(e) {
+            if (e == 2) {
+                // Version mismatch.
+                console.log("Invalid database version.");  //调试用，在控制台输出字符串
+            } else {
+                console.log("Unknown error "+ e +".");
+            }
+            return;
+        }
+    }
+
+    //创建数据库表
+    function createTables(){
+        YARINDB.transaction(
+            function (transaction) {
+                transaction.executeSql('CREATE TABLE IF NOT EXISTS yarin(id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL,desc TEXT NOT NULL);', [], nullDataHandler, errorHandler);
+            }
+        );
+        insertData();
+    }
+
+    //删除表
+    function ddeleteTables(){
+        YARINDB.transaction(
+            function (transaction) {
+                transaction.executeSql("DROP TABLE yarin;", [], nullDataHandler, errorHandler);
+            }
+        );
+        console.log("Table 'page_settings' has been dropped.");
+    }
+
+    //插入数据
+    function insertData(){
+        YARINDB.transaction(
+            function (transaction) {
+                //Starter data when page is initialized
+                var data = ['1','yarin yang','I am yarin'];
+                var data1 = ['2','Jason Choi','I am a graduate student!'];
+                transaction.executeSql("INSERT INTO yarin(id, name, desc) VALUES (?, ?, ?)", [data[0], data[1], data[2]]);
+                transaction.executeSql("INSERT INTO yarin(id, name, desc) VALUES (?, ?, ?)", [data1[0], data1[1], data1[2]]);
+            }
+        );
+    }
+
+    //更新数据
+    function updateData(){
+        YARINDB.transaction(
+            function (transaction) {
+                var data = ['xiaoming huang','not at all'];
+                transaction.executeSql("UPDATE yarin SET name=?, desc=? WHERE id = 2", [data[0], data[1]]);
+            }
+        );
+        selectAll();
+    }
+
+
+
+    function errorHandler(transaction, error){
+        if (error.code==1){
+            // DB Table already exists
+        } else {
+            // Error is a human-readable string.
+            console.log('Oops.  Error was '+error.message+' (Code '+error.code+')');
+        }
+        return false;
+    }
+
+    function nullDataHandler(){
+        console.log("SQL Query Succeeded");
+    }
+
+
+    function selectAll(){
+        YARINDB.transaction(
+            function (transaction) {
+                transaction.executeSql("SELECT * FROM yarin;", [], dataSelectHandler, errorHandler);
+            }
+        );
+    }
+
+    function dataSelectHandler(transaction, results){
+        // Handle the results
+        for (var i=0; i<results.rows.length; i++) {
+            var row = results.rows.item(i);
+            var newFeature = new Object();
+            newFeature.name   = row['name'];
+            newFeature.decs = row['desc'];
+
+            document.getElementById("name").innerHTML="name:"+newFeature.name;
+            document.getElementById("desc").innerHTML="desc:"+newFeature.decs;
+        }
+    }
+
+
+    function handle_error(err) {
+        switch (err.code) {
+        case 1:
+            alert("permission denied");
+            break;
+        case 2:
+            alert("the network is down or the position satellites can't be contacted");
+            break;
+        case 3:
+            alert("time out");
+            break;
+        default:
+            alert("unknown error");
+            break;
+        }
+    }
+
+
+
+    </script>
+
+
+    <script language="javascript" type="text/javascript">
+
+    //接收来自android的数据
+    function getFromAndroid(str){
+        document.getElementById("android").innerHTML=str;  
+    }
+
+    //调用android接口并发送数据
+    function sendToAndroid(){  
+        var str = "the data is from JavaScript!";
+        window.injs.web2Native(str);//通过injs接口调用android的函数
+    }
+
+    //DialogAlert提醒
+    function ale()  
+    {  
+        alert("This is an alert!");  
+    }  
+
+
+
+    </script>
+
+</head>
+
+<body>
+<div><input type="submit" name="Submit" value="alert" onclick="ale()"/></div>
+
+<input type="button" value="Send To Android" onclick="sendToAndroid()"/>
+<div id="android">JavaScript itme</div>
+
+<textarea id="textarea"></textarea>
+<input type='button' value='get'
+       onClick="alert(window.localStorage['value']+':'+window.localStorage['time'])"/>
+
+<div id="name"></div>
+<div id="desc"></div>
+<input type="button" value="updateData" onclick="updateData()"/>
+
+<div id="Latitude"></div>
+<div id="Longitude"></div>
+<div id="City"></div>
+</body>
+
+</html>  
